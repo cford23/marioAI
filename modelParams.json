@@ -1,0 +1,8 @@
+{
+    "epochs": 50,
+    "gamma": 0.9,
+    "epsilon": 1.0,
+    "learning_rate": 1e-3,
+    "batch_size": 3200,
+    "mem_size": 1000
+}
