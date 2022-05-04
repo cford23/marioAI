@@ -1,0 +1,15 @@
+{
+    "training": {
+        "epochs": 500,
+        "gamma": 0.99,
+        "epsilon": 1.0,
+        "learning_rate": 0.00025,
+        "batch_size": 3200,
+        "mem_size": 1000,
+        "outputFile": "marioAI.sav"
+    },
+    "testing": {
+        "lives": 1,
+        "agentFile": "marioAI.sav"
+    }
+}

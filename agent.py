@@ -1,5 +1,6 @@
 # DQN implementation code used from DQN Gridworld assignment file
 
+from audioop import mul
 from collections import deque
 from pyboy import PyBoy, WindowEvent
 import random
@@ -47,7 +48,7 @@ def pressButton(pyboy, action):
     pyboy.tick()
 
 class Agent():
-    def __init__(self, epochs=5, gamma=0.9, epsilon=1.0, learning_rate=1e-3, batch_size=3200, mem_size=1000):
+    def __init__(self, epochs=5, gamma=0.9, epsilon=1.0, learning_rate=1e-3, batch_size=3200, mem_size=1000, outputFile='agent.sav'):
         self.epochs = epochs
         self.losses = []
         self.mem_size = mem_size
@@ -65,6 +66,7 @@ class Agent():
         self.epsilon = epsilon
         self.loss_fn = torch.nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+        self.outputFile = outputFile
 
 
     def act(self, pyboy, state):
@@ -84,12 +86,13 @@ class Agent():
         pyboy.set_emulation_speed(0)
         mario = pyboy.game_wrapper()
         mario.start_game()
-        avgFitnessScores = []
-        print('Average Modified Fitness Scores')
+        print('Max distance per epoch')
+        maxDistances = []
+        rewards = []
         for i in range(self.epochs):
             mario.set_lives_left(0) # only allow 1 total life, more lives allowed if gained through playing
-            prevModifiedFitnessScore = 0
-            fitnessScores = []
+            prevFitnessScore = 0
+            distances = []
             while not mario.game_over() and mario.world == (1, 1) and mario.time_left != 0: # ends game if agent dies or reaches end of level
                 state1_np = np.asarray(mario.game_area()).flatten().astype(np.int16)
                 state1 = torch.from_numpy(state1_np).float()
@@ -100,14 +103,17 @@ class Agent():
 
                 # Calculate reward for agent
                 # Original fitness score: (lives_left * 10000) + (score + time_left * 10) + (_level_progress_max * 10)
-                modifiedFitnessScore = (mario.score + mario.time_left * 10) + (mario._level_progress_max * 1000)
-                if prevModifiedFitnessScore == 0:
+                fitnessScore = (mario.score + mario.time_left * 10) + (mario._level_progress_max * 1000)
+                if prevFitnessScore == 0:
                     reward = 0
                 else:
-                    reward = modifiedFitnessScore - prevModifiedFitnessScore
-
-                fitnessScores.append(modifiedFitnessScore)
-                prevModifiedFitnessScore = modifiedFitnessScore
+                    if fitnessScore > prevFitnessScore:
+                        multiplier = 1000
+                    else:
+                        multiplier = 10000
+                    reward = (fitnessScore - prevFitnessScore) * multiplier
+                prevFitnessScore = fitnessScore
+                rewards.append(reward)
 
                 done = True if mario.world != (1, 1) or mario.game_over() or mario.time_left == 0 else False
                 exp = (state1, action_np, reward, state2, done)
@@ -132,27 +138,30 @@ class Agent():
                     loss.backward()
                     self.losses.append(loss.item())
                     self.optimizer.step()
+                
+                distances.append(mario.level_progress)
             
             if self.epsilon > 0.01:
                 self.epsilon -= (1 / self.epochs)
             
-            avgFitnessScore = round(np.average(fitnessScores))
-            avgFitnessScores.append(avgFitnessScore)
-            print(f'Epoch {i}/{self.epochs}: {avgFitnessScore}', end="\r")
+            maxDistances.append(max(distances))
+            print(f'Epoch {i}/{self.epochs}: {max(distances)}', end="\r")
             mario.reset_game()
         pyboy.stop()
+        print('\nTraining complete')
 
         # create graph where x-axis is number of epochs and y-axis is the average modified fitness score
-        plt.plot(np.arange(self.epochs), avgFitnessScores)
+        plt.plot(np.arange(self.epochs), maxDistances)
         plt.title('Agent Training Performance')
         plt.xlabel('Epoch')
-        plt.ylabel('Avg Modified Fitness Score')
+        plt.ylabel('Max Level Distance')
         plt.savefig(f'plots/{datetime.now()}_training.png')
     
-    def save(self, modelFileName):
-        torch.save(self.model.state_dict(), modelFileName)
+    def save(self):
+        torch.save(self.model.state_dict(), self.outputFile)
 
     def test(self, lives):
+        print('Starting testing - press Ctrl-C to stop.')
         pyboy = PyBoy('Super Mario Land.gb', game_wrapper=True)
         mario = pyboy.game_wrapper()
         mario.start_game()
@@ -165,6 +174,8 @@ class Agent():
                 state = torch.from_numpy(state_np).float()
                 self.act(pyboy, state)
             print('Done playing')
+        except KeyboardInterrupt:
+            print('\nStopping testing')
         finally:
             pyboy.stop()
             print('PyBoy has stopped')

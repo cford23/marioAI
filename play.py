@@ -4,24 +4,25 @@ import sys
 import json
 
 
-modelFileName = 'marioAI.sav'
-
 if len(sys.argv) != 2:
     print("Missing run type parameter - either 'train' or 'test'")
     sys.exit()
 
+with open('agentInfo.json', 'r') as params:
+    agentInfo = json.load(params)
+
 # Train and save the model
 if sys.argv[1] == 'train':
-    with open('modelParams.json', 'r') as params:
-        modelParams = json.load(params)
-    marioAI = Agent(**modelParams)
+    marioAI = Agent(**agentInfo['training'])
     marioAI.train()
-    pickle.dump(marioAI, open(modelFileName, 'wb'))
+    with open(agentInfo['training']['outputFile'], 'wb') as outputFile:
+        pickle.dump(marioAI, outputFile)
 
 # Load and test model
 elif sys.argv[1] == 'test':
-    marioAI = pickle.load(open(modelFileName, 'rb'))
-    lives = 1
+    with open(agentInfo['testing']['agentFile'], 'rb') as modelFile:
+        marioAI = pickle.load(modelFile)
+    lives = agentInfo['testing']['lives']
     marioAI.test(lives)
 
 # Incorrect run parameter
