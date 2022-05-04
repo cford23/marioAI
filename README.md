@@ -41,7 +41,7 @@ When training the agent, you can modify the model's hyperparameters in the [agen
 ```
 python play.py train
 ```
-The agent will then train for the given number of epochs. Once the training has completed, an image will be available in the plots folder with the file name starting with the timestamp of when it was run. This image will contain a graph of the agents average modified fitness score over each epoch.
+The agent will then train for the given number of epochs. Once the training has completed, an image will be available in the plots folder with the file name starting with the timestamp of when it was run. This image will contain a graph of the agent's max level progress over each epoch.
 
 ### Testing
 To test the agent, first make sure there is a [marioAI.sav](marioAI.sav) file. This document contains all the necessary information to load the agent and have it play. Next, run the following command to test the agent.
