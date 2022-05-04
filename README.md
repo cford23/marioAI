@@ -26,7 +26,7 @@ source venv/bin/activate
 ```
 Windows
 ```
-.\venv\bin\activate
+.\venv\Scripts\activate
 ```
 
 ## Install Python Libraries
